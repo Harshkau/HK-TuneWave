@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Raleway">
+    <link rel="icon" href="https://cdn.iconscout.com/icon/free/png-256/free-music-1767802-1502382.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <title>HK-TuneWave</title>
+    <style>
+        body {
+            font-family: "Raleway", sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            background-color: #484848;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: rgb(0, 0, 0);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            color: white;
+        }
+
+        .search-container {
+            position: sticky;
+            top: 0;
+            background: rgb(0, 0, 0);
+            padding: 10px 0;
+            z-index: 10;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: green;
+        }
+
+        input {
+            padding: 10px;
+            margin-right: 5px;
+            width: calc(100% - 140px);
+            max-width: 400px;
+            box-sizing: border-box;
+            border-radius: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #1db954;
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #1aa34a;
+        }
+
+        #results {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .track {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            background-size: cover;
+            background-position: center;
+            color: white;
+            position: relative;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.5s ease forwards;
+        }
+
+        .track img {
+            margin-right: 10px;
+            border-radius: 30%;
+            z-index: 2;
+            cursor: pointer;
+        }
+
+        .track div {
+            flex: 1;
+            z-index: 2;
+        }
+
+        .track::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            z-index: 1;
+        }
+
+        .player-controls {
+            display: flex;
+            align-items: center;
+        }
+
+        .player-controls i {
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 1.2em;
+        }
+
+        .player-controls i:hover {
+            color: #1db954;
+        }
+
+        .player-controls audio {
+            display: none;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                align-items: flex-start;
+            }
+
+            input {
+                width: calc(100% - 130px);
+            }
+
+            button {
+                width: 100px;
+            }
+
+            .track {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .track img {
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="search-container">
+            <h1>HK-TuneWave</h1>
+            <input type="text" id="search" placeholder="Search for a song...">
+            <button onclick="searchMusic()">Search</button>
+        </div>
+        <div id="results"></div>
+    </div>
+    <script>
+        const clientId = 'a55a2f3e3c6e43c5bc7ae672189e0783';
+        const clientSecret = 'e794abc1e8f1462fa0a6140c4b06f01d';
+
+        async function getToken() {
+            const result = await fetch('https://accounts.spotify.com/api/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Authorization': 'Basic ' + btoa(clientId + ':' + clientSecret)
+                },
+                body: 'grant_type=client_credentials'
+            });
+
+            const data = await result.json();
+            return data.access_token;
+        }
+
+        async function searchMusic() {
+            const token = await getToken();
+            const query = document.getElementById('search').value;
+            const result = await fetch(`https://api.spotify.com/v1/search?q=${query}&type=track`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            });
+
+            const data = await result.json();
+            displayResults(data.tracks.items);
+        }
+
+        function displayResults(tracks) {
+            const results = document.getElementById('results');
+            results.innerHTML = '';
+
+            tracks.forEach(track => {
+                const trackElement = document.createElement('div');
+                trackElement.classList.add('track');
+
+                trackElement.style.backgroundImage = `url(${track.album.images[0].url})`;
+
+                trackElement.innerHTML = `
+                    <img src="${track.album.images[0].url}" alt="Album Art" width="50" height="50" onclick="playPauseTrack(this)">
+                    <div>
+                        <p><strong>${track.name}</strong> by ${track.artists[0].name}</p>
+                        <div class="player-controls">
+                            <i class="fas fa-play" onclick="playPauseTrack(this)"></i>
+                            <i class="fas fa-download" onclick="downloadTrack('${track.preview_url}')"></i>
+                            <audio>
+                                <source src="${track.preview_url}" type="audio/mpeg">
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                    </div>
+                `;
+
+                results.appendChild(trackElement);
+            });
+        }
+
+        function playPauseTrack(element) {
+            const trackElement = element.closest('.track');
+            const audio = trackElement.querySelector('audio');
+            const playPauseIcon = trackElement.querySelector('.fa-play, .fa-pause');
+            if (audio.paused) {
+                audio.play();
+                playPauseIcon.classList.remove('fa-play');
+                playPauseIcon.classList.add('fa-pause');
+            } else {
+                audio.pause();
+                playPauseIcon.classList.remove('fa-pause');
+                playPauseIcon.classList.add('fa-play');
+            }
+        }
+
+        function downloadTrack(url) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'track.mp3';
+            a.click();
+        }
+    </script>
+</body>
+</html>

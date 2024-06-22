@@ -43,7 +43,8 @@
         h1 {
             margin-bottom: 20px;
             font-size: 24px;
-            color: rgb(128, 83, 0);
+            color: rgb(207, 140, 15);
+            user-select: none;
         }
 
         input {
@@ -57,7 +58,7 @@
 
         button {
             padding: 10px 20px;
-            background-color: #b9751d;
+            background-color: rgb(207, 140, 15);
             color: #fff;
             border: none;
             border-radius: 20px;
@@ -93,6 +94,9 @@
             border-radius: 30%;
             z-index: 2;
             cursor: pointer;
+            animation: scale-a-lil 0.5s linear both;
+            animation-timeline: view();
+            animation-range: 25vh 75vh;
         }
 
         .track div {
@@ -138,6 +142,15 @@
             }
         }
 
+        @keyframes scale-a-lil {
+            from {
+                transform: scale(0.5);
+            }
+            to {
+                transform: scale(1);
+            }
+        }
+
         @media (max-width: 600px) {
             body {
                 align-items: flex-start;
@@ -172,87 +185,104 @@
         <div id="results"></div>
     </div>
     <script>
-        const clientId = 'a55a2f3e3c6e43c5bc7ae672189e0783';
-        const clientSecret = 'e794abc1e8f1462fa0a6140c4b06f01d';
+     
+    const clientId = 'a55a2f3e3c6e43c5bc7ae672189e0783';
+    const clientSecret = 'e794abc1e8f1462fa0a6140c4b06f01d';
+    let currentPlayingAudio = null; // Variable to store the currently playing audio element
 
-        async function getToken() {
-            const result = await fetch('https://accounts.spotify.com/api/token', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'Authorization': 'Basic ' + btoa(clientId + ':' + clientSecret)
-                },
-                body: 'grant_type=client_credentials'
-            });
+    async function getToken() {
+        const result = await fetch('https://accounts.spotify.com/api/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': 'Basic ' + btoa(clientId + ':' + clientSecret)
+            },
+            body: 'grant_type=client_credentials'
+        });
 
-            const data = await result.json();
-            return data.access_token;
-        }
+        const data = await result.json();
+        return data.access_token;
+    }
 
-        async function searchMusic() {
-            const token = await getToken();
-            const query = document.getElementById('search').value;
-            const result = await fetch(`https://api.spotify.com/v1/search?q=${query}&type=track`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': 'Bearer ' + token
-                }
-            });
-
-            const data = await result.json();
-            displayResults(data.tracks.items);
-        }
-
-        function displayResults(tracks) {
-            const results = document.getElementById('results');
-            results.innerHTML = '';
-
-            tracks.forEach(track => {
-                const trackElement = document.createElement('div');
-                trackElement.classList.add('track');
-
-                trackElement.style.backgroundImage = `url(${track.album.images[0].url})`;
-
-                trackElement.innerHTML = `
-                    <img src="${track.album.images[0].url}" alt="Album Art" width="50" height="50" onclick="playPauseTrack(this)">
-                    <div>
-                        <p><strong>${track.name}</strong> by ${track.artists[0].name}</p>
-                        <div class="player-controls">
-                            <i class="fas fa-play" onclick="playPauseTrack(this)"></i>
-                            <i class="fas fa-download" onclick="downloadTrack('${track.preview_url}')"></i>
-                            <audio>
-                                <source src="${track.preview_url}" type="audio/mpeg">
-                                Your browser does not support the audio element.
-                            </audio>
-                        </div>
-                    </div>
-                `;
-
-                results.appendChild(trackElement);
-            });
-        }
-
-        function playPauseTrack(element) {
-            const trackElement = element.closest('.track');
-            const audio = trackElement.querySelector('audio');
-            const playPauseIcon = trackElement.querySelector('.fa-play, .fa-pause');
-            if (audio.paused) {
-                audio.play();
-                playPauseIcon.classList.remove('fa-play');
-                playPauseIcon.classList.add('fa-pause');
-            } else {
-                audio.pause();
-                playPauseIcon.classList.remove('fa-pause');
-                playPauseIcon.classList.add('fa-play');
+    async function searchMusic() {
+        const token = await getToken();
+        const query = document.getElementById('search').value;
+        const result = await fetch(`https://api.spotify.com/v1/search?q=${query}&type=track`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token
             }
+        });
+
+        const data = await result.json();
+        displayResults(data.tracks.items);
+    }
+
+    function displayResults(tracks) {
+        const results = document.getElementById('results');
+        results.innerHTML = '';
+
+        tracks.forEach(track => {
+            const trackElement = document.createElement('div');
+            trackElement.classList.add('track');
+
+            trackElement.style.backgroundImage = `url(${track.album.images[0].url})`;
+
+            trackElement.innerHTML = `
+                <img src="${track.album.images[0].url}" alt="Album Art" width="50" height="50" onclick="playPauseTrack(this)">
+                <div>
+                    <p><strong>${track.name}</strong> by ${track.artists[0].name}</p>
+                    <div class="player-controls">
+                        <i class="fas fa-play" onclick="playPauseTrack(this)"></i>
+                        <i class="fas fa-download" onclick="downloadTrack('${track.preview_url}')"></i>
+                        <audio>
+                            <source src="${track.preview_url}" type="audio/mpeg">
+                            Your browser does not support the audio element.
+                        </audio>
+                    </div>
+                </div>
+            `;
+
+            results.appendChild(trackElement);
+        });
+    }
+
+    function playPauseTrack(element) {
+        const trackElement = element.closest('.track');
+        const audio = trackElement.querySelector('audio');
+        const playPauseIcon = trackElement.querySelector('.fa-play, .fa-pause');
+
+        // Pause the currently playing audio if it exists and is not the same as the clicked one
+        if (currentPlayingAudio && currentPlayingAudio !== audio) {
+            const currentlyPlayingTrack = currentPlayingAudio.closest('.track');
+            const currentlyPlayingIcon = currentlyPlayingTrack.querySelector('.fa-play, .fa-pause');
+            currentPlayingAudio.pause();
+            currentlyPlayingIcon.classList.remove('fa-pause');
+            currentlyPlayingIcon.classList.add('fa-play');
         }
 
-        function downloadTrack(url) {
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'track.mp3';
-            a.click();
+        // Toggle play/pause for the clicked audio
+        if (audio.paused) {
+            audio.play();
+            playPauseIcon.classList.remove('fa-play');
+            playPauseIcon.classList.add('fa-pause');
+            currentPlayingAudio = audio; // Set the current audio to the clicked one
+        } else {
+            audio.pause();
+            playPauseIcon.classList.remove('fa-pause');
+            playPauseIcon.classList.add('fa-play');
+            currentPlayingAudio = null; // Reset current audio since it's paused
         }
+    }
+
+    function downloadTrack(url) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'track.mp3';
+        a.click();
+    }
+
+
     </script>
 </body>
 </html>
